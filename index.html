@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Označi in prestavi besedo</title>
+  <style>
+    :root {
+      --ink: #1d2d44;
+      --muted: #617086;
+      --blue: #315fbd;
+      --blue-dark: #22478f;
+      --blue-soft: #e9f0ff;
+      --line: #d6e0ed;
+      --good: #23713f;
+      --good-bg: #e7f6ec;
+      --bad: #a03c28;
+      --bad-bg: #fff0eb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 38px 18px;
+      background: #eef3f9;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main { width: min(960px, 100%); margin: 0 auto; }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 5vw, 44px);
+      line-height: 1.1;
+    }
+
+    .intro {
+      margin: 0 0 26px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    .card {
+      padding: clamp(22px, 4vw, 38px);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 14px 38px rgba(31, 53, 88, 0.08);
+    }
+
+    .task {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px 14px;
+      align-items: center;
+      margin-bottom: 26px;
+      padding: 18px;
+      border-radius: 14px;
+      background: #f4f7fb;
+      font-size: 19px;
+      line-height: 1.5;
+    }
+
+    .step-number {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .word-pill {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 2px 11px;
+      border-radius: 7px;
+      background: #dde8ff;
+      color: #234990;
+      font-weight: 700;
+    }
+
+    .workspace-label {
+      display: block;
+      margin-bottom: 9px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    #editor {
+      min-height: 190px;
+      padding: 25px;
+      border: 2px solid #b7c6db;
+      border-radius: 12px;
+      background: #fdfefe;
+      font-size: clamp(23px, 3vw, 29px);
+      line-height: 2.3;
+      cursor: text;
+      user-select: text;
+    }
+
+    #editor:focus {
+      border-color: #5e7fca;
+      outline: 3px solid #cfdbf7;
+    }
+
+    #editor::selection,
+    #editor *::selection {
+      background: #9fc0ff;
+      color: #102b5a;
+    }
+
+    .word { white-space: nowrap; }
+
+    .source-moved {
+      color: #8793a6;
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+    }
+
+    .drop-zone {
+      display: inline-flex;
+      min-width: 112px;
+      min-height: 45px;
+      margin: 0 7px;
+      padding: 4px 10px;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      border: 2px dashed #5277c6;
+      border-radius: 9px;
+      background: var(--blue-soft);
+      color: #2a55ad;
+      font: 700 12px/1.2 Arial, sans-serif;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+
+    .drop-zone.ready {
+      border-style: solid;
+      background: #d6e4ff;
+      box-shadow: 0 0 0 4px rgba(82, 119, 198, 0.17);
+      transform: scale(1.04);
+    }
+
+    .drop-zone.done {
+      border: 2px solid #4b9a65;
+      background: var(--good-bg);
+      color: var(--good);
+      font-size: 18px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    #feedback {
+      min-height: 62px;
+      margin: 20px 0 14px;
+      padding: 16px;
+      border-radius: 10px;
+      background: #f1f4f8;
+      color: #536178;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    #feedback.good { background: var(--good-bg); color: var(--good); }
+    #feedback.bad { background: var(--bad-bg); color: var(--bad); }
+
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 20px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    button {
+      padding: 14px 24px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--blue-dark); }
+    button:focus-visible { outline: 3px solid #8eaaea; outline-offset: 3px; }
+
+    #score { color: var(--muted); font-size: 15px; }
+
+    .help {
+      margin: 23px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 24px 12px; }
+      .task { grid-template-columns: auto 1fr; padding: 14px; font-size: 17px; }
+      #editor { min-height: 230px; padding: 18px; line-height: 2.5; }
+      .drop-zone { min-width: 96px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Označi in prestavi besedo</h1>
+    <p class="intro">Vadi natančno označevanje in premikanje besedila z miško.</p>
+
+    <section class="card" aria-label="Igra označevanja in premikanja besedila">
+      <div class="task">
+        <span class="step-number">1</span>
+        <span>V povedi označi besedo <span class="word-pill" id="sourceInstruction"></span>.</span>
+        <span class="step-number">2</span>
+        <span>Označeno besedo povleci <strong id="positionInstruction"></strong> besedo <span class="word-pill" id="targetInstruction"></span>.</span>
+      </div>
+
+      <span class="workspace-label">Besedilo za delo</span>
+      <div id="editor" tabindex="0" aria-label="Poved z mestom za spuščanje označene besede"></div>
+
+      <div id="feedback" role="status" aria-live="polite">Najprej označi zahtevano besedo.</div>
+
+      <div class="footer">
+        <button id="nextButton" type="button">Druga naloga</button>
+        <span id="score">Pravilno rešene naloge: 0</span>
+      </div>
+
+      <p class="help"><strong>Kako povlečeš označeno besedo?</strong> Z miško jo najprej označi. Nato kazalec postavi na modro označeno besedo, pritisni levi gumb miške, jo povleci v polje »Spusti sem« in spusti gumb.</p>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+
+    const sentences = [
+      'Naša mačka rada spi na mehkem kavču.',
+      'Na šolskem vrtu rastejo pisane rože.',
+      'Luka je v knjižnici izbral zanimivo knjigo.',
+      'Po dežju se je na nebu pojavila mavrica.',
+      'Učenci so na igrišču igrali košarko.',
+      'Moja sestra vsak večer posluša glasbo.',
+      'V gozdu smo opazili majhno veverico.',
+      'Babica je za kosilo skuhala okusno juho.',
+      'Na izlet smo vzeli vodo in sendviče.',
+      'Zjutraj je pred hišo zapadel prvi sneg.',
+      'Na mizi ležijo svinčnik, radirka in zvezek.',
+      'Peter je prijatelju pokazal novo kolo.',
+      'V računalniški učilnici ustvarjamo zanimive igre.',
+      'Čez most je počasi zapeljal moder avtobus.',
+      'Na travniku se pasejo ovce in koze.',
+      'Nina je narisala hišo z velikimi okni.',
+      'V nedeljo bomo obiskali bližnji muzej.',
+      'Veter je po dvorišču raznašal suho listje.',
+      'Na morju smo zgradili velik peščeni grad.',
+      'Učiteljica je na tablo napisala novo nalogo.',
+      'Zvečer na nebu zasijejo svetle zvezde.',
+      'Majhen pes je veselo mahal z repom.',
+      'V kuhinji diši po sveže pečenem kruhu.',
+      'Maja je skrbno zalila rastline na balkonu.',
+      'Naš razred pripravlja predstavo za starše.',
+      'Na postaji smo čakali na prihod vlaka.',
+      'Žan je v nahrbtnik pospravil športne copate.',
+      'Ob potoku smo našli lep okrogel kamen.',
+      'Tina je na računalniku napisala kratko zgodbo.',
+      'Po pouku smo skupaj odšli na sprehod.'
+    ];
+
+    const editor = document.getElementById('editor');
+    const feedback = document.getElementById('feedback');
+    const nextButton = document.getElementById('nextButton');
+    const sourceInstruction = document.getElementById('sourceInstruction');
+    const targetInstruction = document.getElementById('targetInstruction');
+    const positionInstruction = document.getElementById('positionInstruction');
+    const scoreElement = document.getElementById('score');
+
+    let currentTask = null;
+    let deck = [];
+    let solved = false;
+    let validDrag = false;
+    let score = 0;
+
+    function shuffle(items) {
+      const copy = [...items];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function setFeedback(message, kind = '') {
+      feedback.textContent = message;
+      feedback.className = kind;
+    }
+
+    function wordsIn(sentence) {
+      return [...sentence.matchAll(/[A-Za-zČŠŽčšž]+/g)].map((match, index) => ({
+        text: match[0],
+        start: match.index,
+        end: match.index + match[0].length,
+        index
+      }));
+    }
+
+    function chooseTask() {
+      if (deck.length === 0) deck = shuffle(sentences);
+      const sentence = deck.pop();
+      const words = wordsIn(sentence);
+      const eligibleSources = words.filter(word => word.text.length >= 3);
+      const source = eligibleSources[Math.floor(Math.random() * eligibleSources.length)];
+      const eligibleTargets = words.filter(word => word.index !== source.index);
+      const target = eligibleTargets[Math.floor(Math.random() * eligibleTargets.length)];
+      const position = Math.random() < 0.5 ? 'before' : 'after';
+      return { sentence, words, source, target, position };
+    }
+
+    function renderSentence(task) {
+      editor.replaceChildren();
+      let cursor = 0;
+
+      task.words.forEach(word => {
+        if (word.start > cursor) {
+          editor.append(document.createTextNode(task.sentence.slice(cursor, word.start)));
+        }
+
+        if (word.index === task.target.index && task.position === 'before') {
+          editor.append(createDropZone());
+        }
+
+        const wordElement = document.createElement('span');
+        wordElement.className = 'word';
+        wordElement.textContent = word.text;
+        wordElement.dataset.wordIndex = String(word.index);
+        if (word.index === task.source.index) wordElement.id = 'sourceWord';
+        editor.append(wordElement);
+
+        if (word.index === task.target.index && task.position === 'after') {
+          editor.append(createDropZone());
+        }
+
+        cursor = word.end;
+      });
+
+      if (cursor < task.sentence.length) {
+        editor.append(document.createTextNode(task.sentence.slice(cursor)));
+      }
+    }
+
+    function createDropZone() {
+      const zone = document.createElement('span');
+      zone.id = 'dropZone';
+      zone.className = 'drop-zone';
+      zone.textContent = 'Spusti sem';
+      zone.setAttribute('aria-label', 'Mesto za spuščanje besede');
+      return zone;
+    }
+
+    function newTask() {
+      currentTask = chooseTask();
+      solved = false;
+      validDrag = false;
+      sourceInstruction.textContent = currentTask.source.text;
+      targetInstruction.textContent = currentTask.target.text;
+      positionInstruction.textContent = currentTask.position === 'before' ? 'pred' : 'za';
+      renderSentence(currentTask);
+      nextButton.textContent = 'Druga naloga';
+      setFeedback('Najprej označi zahtevano besedo.');
+      window.getSelection()?.removeAllRanges();
+    }
+
+    function isCorrectSelection() {
+      const selection = window.getSelection();
+      const sourceWord = document.getElementById('sourceWord');
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !sourceWord) return false;
+
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString().trim();
+      return selectedText === currentTask.source.text && range.intersectsNode(sourceWord);
+    }
+
+    editor.addEventListener('mouseup', () => {
+      if (solved) return;
+      window.setTimeout(() => {
+        if (isCorrectSelection()) {
+          setFeedback('Beseda je pravilno označena. Zdaj jo povleci v polje »Spusti sem«.', 'good');
+        } else if (!window.getSelection()?.isCollapsed) {
+          setFeedback('Poskusi znova. Natančno označi samo zahtevano besedo.', 'bad');
+        }
+      }, 0);
+    });
+
+    editor.addEventListener('dragstart', event => {
+      if (solved) {
+        event.preventDefault();
+        return;
+      }
+
+      validDrag = isCorrectSelection();
+      if (!validDrag) {
+        event.preventDefault();
+        setFeedback('Poskusi znova. Najprej pravilno označi zahtevano besedo.', 'bad');
+        return;
+      }
+
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', currentTask.source.text);
+    });
+
+    editor.addEventListener('dragend', () => {
+      const zone = document.getElementById('dropZone');
+      zone?.classList.remove('ready');
+      validDrag = false;
+    });
+
+    editor.addEventListener('dragover', event => {
+      const zone = event.target.closest?.('#dropZone');
+      if (!zone || !validDrag || solved) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      zone.classList.add('ready');
+    });
+
+    editor.addEventListener('dragleave', event => {
+      const zone = event.target.closest?.('#dropZone');
+      if (zone && !zone.contains(event.relatedTarget)) zone.classList.remove('ready');
+    });
+
+    editor.addEventListener('drop', event => {
+      const zone = event.target.closest?.('#dropZone');
+      if (!zone || !validDrag || solved) return;
+      event.preventDefault();
+
+      const droppedText = event.dataTransfer.getData('text/plain').trim();
+      if (droppedText !== currentTask.source.text) {
+        setFeedback('Poskusi znova.', 'bad');
+        return;
+      }
+
+      solved = true;
+      score += 1;
+      zone.className = 'drop-zone done';
+      zone.textContent = currentTask.source.text;
+      document.getElementById('sourceWord')?.classList.add('source-moved');
+      scoreElement.textContent = `Pravilno rešene naloge: ${score}`;
+      nextButton.textContent = 'Naslednja naloga';
+      const messages = ['Odlično!', 'Bravo!', 'Pravilno!', 'Zelo dobro!'];
+      setFeedback(messages[Math.floor(Math.random() * messages.length)], 'good');
+      window.getSelection()?.removeAllRanges();
+    });
+
+    nextButton.addEventListener('click', newTask);
+    newTask();
+  </script>
+</body>
+</html>
